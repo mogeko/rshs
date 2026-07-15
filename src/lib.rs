@@ -24,6 +24,8 @@ pub mod webdav;
 pub use auth::{AuthState, build_auth_state};
 /// Command-line interface.
 pub use cli::Cli;
+/// Tailscale identity authentication configuration.
+pub use middleware::tailscale::TailscaleAuthState;
 /// TLS certificate/key configuration.
 pub use server::tls::TlsConfig;
 /// Server state, configuration, startup, and router construction.

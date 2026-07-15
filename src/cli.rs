@@ -83,6 +83,43 @@ pub struct Cli {
     )]
     pub auth_cache_ttl: u64,
 
+    /// Trust `tailscale serve`'s injected `Tailscale-User-Login` identity
+    /// header instead of (or in addition to) Basic Auth
+    ///
+    /// Pass `all` to allow any authenticated tailnet user through, or a
+    /// comma-separated list of logins (e.g.
+    /// `devuser@example.com,teammate@example.com`) to restrict to specific accounts.
+    ///
+    /// Only takes effect for requests proxied by `tailscale serve` from
+    /// user-owned tailnet devices — Tailscale populates this header itself
+    /// and strips any client-supplied copy, so it cannot be spoofed as long
+    /// as this server is bound to loopback and reached only via `serve`.
+    /// Requests missing the header (tagged devices, direct LAN access,
+    /// Funnel traffic) are rejected with 403 whenever this flag or
+    /// `--tailscale-users-file` is set. If neither is set, this check is
+    /// skipped entirely (backward compatible).
+    #[arg(
+        long = "accept-tailscale-serve-auth",
+        value_name = "all|LOGIN[,LOGIN...]",
+        env = "RSHS_ACCEPT_TAILSCALE_SERVE_AUTH"
+    )]
+    pub accept_tailscale_serve_auth: Option<String>,
+
+    /// File mapping Tailscale logins to access, one entry per line
+    ///
+    /// Each line is `all` (allow any tailnet login), a bare login
+    /// (`devuser@example.com`), or a login plus a mapped local name
+    /// (`devuser@example.com admin`) recorded for logging/attribution. Lines
+    /// starting with `#` and blank lines are ignored. Merged with
+    /// `--accept-tailscale-serve-auth` if both are given (either
+    /// granting access is sufficient; `all` in either source wins).
+    #[arg(
+        long = "tailscale-users-file",
+        value_name = "PATH",
+        env = "RSHS_TAILSCALE_USERS_FILE"
+    )]
+    pub tailscale_users_file: Option<String>,
+
     /// WebDAV lock timeout in seconds (0 = never expire)
     ///
     /// Locks are auto-removed after this period of inactivity.
@@ -139,6 +176,30 @@ impl Cli {
         }
 
         config
+    }
+
+    /// Builds a `TailscaleAuthState` from `--accept-tailscale-serve-auth`
+    /// and/or `--tailscale-users-file`. Both may be set; results are merged.
+    pub fn to_tailscale_auth_state(&self) -> crate::middleware::tailscale::TailscaleAuthState {
+        use crate::middleware::tailscale::TailscaleAuthState;
+
+        let from_flag = match &self.accept_tailscale_serve_auth {
+            Some(raw) => TailscaleAuthState::from_arg(raw),
+            None => TailscaleAuthState::new(),
+        };
+
+        let from_file = match &self.tailscale_users_file {
+            Some(path) => match TailscaleAuthState::from_file(std::path::Path::new(path)) {
+                Ok(state) => state,
+                Err(e) => {
+                    tracing::error!(path = %path, error = %e, "failed to load tailscale users file");
+                    TailscaleAuthState::new()
+                }
+            },
+            None => TailscaleAuthState::new(),
+        };
+
+        from_flag.merge(from_file)
     }
 
     /// Resolves the log level: `-q` → `"off"`, `-v` → `"debug"`, `-vv` → `"trace"`,

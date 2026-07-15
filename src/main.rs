@@ -23,6 +23,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let auth_state = rshs::build_auth_state(&cli);
+    let tailscale_auth_state = cli.to_tailscale_auth_state();
 
     let port = cli.effective_port();
     let tls_config = cli.to_tls_config();
@@ -35,6 +36,7 @@ async fn main() -> std::io::Result<()> {
         port,
         tls_config,
         auth_state,
+        tailscale_auth_state,
         cli.lock_timeout,
     ))
     .await

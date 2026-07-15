@@ -96,6 +96,26 @@ RSHS_AUTH_CACHE_TTL=120 rshs --user admin:secret ./data
 >   mogeko/rshs
 > ```
 
+## Tailscale Identity Auth
+
+As an alternative to Basic Auth, rshs can trust the `Tailscale-User-Login`
+header that `tailscale serve` injects for requests from user-owned tailnet
+devices — no shared passwords needed. Full details, including exactly what
+Tailscale guarantees about header spoofing and tagged devices, are in the
+[Tailscale Auth guide](./tailscale-auth.md). Quick start:
+
+```sh
+# Bind to loopback — tailscale serve must be the only path in
+rshs -H 127.0.0.1 -p 8765 --accept-tailscale-serve-auth all ./data
+tailscale serve --bg --https=8443 http://127.0.0.1:8765
+
+# Or restrict to specific logins
+rshs --accept-tailscale-serve-auth devuser@example.com,teammate@example.com ./data
+
+# Or use a users file for larger lists / login-to-name mapping
+rshs --tailscale-users-file ./tailscale-users ./data
+```
+
 ## TLS / HTTPS
 
 TLS is enabled by providing both a certificate and private key file in PEM format.
@@ -243,6 +263,11 @@ Options:
           Write CLI credentials into the shadow file
       --auth-cache-ttl <AUTH_CACHE_TTL>
           Auth cache TTL in seconds (0 = disabled) [env: RSHS_AUTH_CACHE_TTL=] [default: 60]
+      --accept-tailscale-serve-auth <all|LOGIN[,LOGIN...]>
+          Trust tailscale serve's identity header instead of/alongside Basic Auth
+          [env: RSHS_ACCEPT_TAILSCALE_SERVE_AUTH=]
+      --tailscale-users-file <PATH>
+          File mapping Tailscale logins to access [env: RSHS_TAILSCALE_USERS_FILE=]
       --lock-timeout <LOCK_TIMEOUT>
           WebDAV lock timeout in seconds (0 = never expire) [env: RSHS_LOCK_TIMEOUT=] [default: 300]
   -v, --verbose...

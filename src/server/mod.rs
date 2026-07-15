@@ -22,6 +22,7 @@ use tokio::sync::RwLock;
 
 use crate::auth::AuthState;
 use crate::handlers::{http, locks, webdav as webdav_handler};
+use crate::middleware::tailscale::TailscaleAuthState;
 use crate::utils::path::{self, ResolveTargetError};
 use crate::webdav::{DeadPropertyStore, LockStore, Method};
 
@@ -32,6 +33,7 @@ use crate::webdav::{DeadPropertyStore, LockStore, Method};
 #[derive(Clone)]
 pub struct AppState {
     pub auth_state: Arc<AuthState>,
+    pub tailscale_auth_state: Arc<TailscaleAuthState>,
     pub root_dir: PathBuf,
     pub root_canonical: PathBuf,
     pub dead_props: Arc<RwLock<DeadPropertyStore>>,
@@ -42,9 +44,19 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(root: PathBuf, auth_state: AuthState, lock_timeout: Duration) -> Self {
+        Self::with_tailscale_auth(root, auth_state, TailscaleAuthState::new(), lock_timeout)
+    }
+
+    pub fn with_tailscale_auth(
+        root: PathBuf,
+        auth_state: AuthState,
+        tailscale_auth_state: TailscaleAuthState,
+        lock_timeout: Duration,
+    ) -> Self {
         let root_canonical = fs::canonicalize(&root).unwrap_or_else(|_| root.clone());
         Self {
             auth_state: Arc::new(auth_state),
+            tailscale_auth_state: Arc::new(tailscale_auth_state),
             root_dir: root,
             root_canonical,
             dead_props: Arc::new(RwLock::new(DeadPropertyStore::new())),
@@ -88,6 +100,7 @@ pub struct ServerConfig {
     pub port: u16,
     pub tls_config: Option<tls::TlsConfig>,
     pub auth_state: AuthState,
+    pub tailscale_auth_state: TailscaleAuthState,
     pub lock_timeout: u64,
 }
 
@@ -105,6 +118,7 @@ pub async fn start_server(config: ServerConfig) -> io::Result<()> {
         .map_err(|e| Error::new(ErrorKind::InvalidInput, e))?;
 
     let auth_state = config.auth_state;
+    let tailscale_auth_state = config.tailscale_auth_state;
     let root = config.root_dir;
     let lock_timeout = if config.lock_timeout == 0 {
         Duration::ZERO // A zero lock timeout means locks never expire
@@ -112,7 +126,12 @@ pub async fn start_server(config: ServerConfig) -> io::Result<()> {
         Duration::from_secs(config.lock_timeout)
     };
 
-    let state = Arc::new(AppState::new(root, auth_state, lock_timeout));
+    let state = Arc::new(AppState::with_tailscale_auth(
+        root,
+        auth_state,
+        tailscale_auth_state,
+        lock_timeout,
+    ));
 
     let router = make_router(state.clone());
 
@@ -159,11 +178,15 @@ pub async fn start_server(config: ServerConfig) -> io::Result<()> {
 /// testing without binding a TCP port. Layers are applied from inside out:
 /// `HealthCheck` (outermost) -> `Auth` -> `LockEnforce` -> `TraceLayer` -> dispatch.
 pub fn make_router(state: Arc<AppState>) -> Router {
-    use crate::middleware::{auth, health, lock};
+    use crate::middleware::{auth, health, lock, tailscale};
     use axum::middleware::from_fn_with_state;
     use tower_http::trace::TraceLayer;
 
     let auth_mw = from_fn_with_state(state.auth_state.clone(), auth::auth_middleware);
+    let tailscale_auth_mw = from_fn_with_state(
+        state.tailscale_auth_state.clone(),
+        tailscale::tailscale_auth_middleware,
+    );
     let lock_mw = from_fn_with_state(state.clone(), lock::lock_enforce);
     let health_check_mw = health::HealthCheck;
 
@@ -172,6 +195,7 @@ pub fn make_router(state: Arc<AppState>) -> Router {
         .layer(TraceLayer::new_for_http())
         .layer(lock_mw)
         .layer(auth_mw)
+        .layer(tailscale_auth_mw)
         .layer(health_check_mw)
         .with_state(state)
 }

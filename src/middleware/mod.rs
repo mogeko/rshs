@@ -3,3 +3,4 @@
 pub mod auth;
 pub mod health;
 pub mod lock;
+pub mod tailscale;

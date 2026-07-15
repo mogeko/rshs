@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 use rshs::webdav::{Depth, IfCondition, IfList, LockInfo, LockScope, Method};
-use rshs::{AuthState, ServerConfig, TlsConfig};
+use rshs::{AuthState, ServerConfig, TailscaleAuthState, TlsConfig};
 
 #[test]
 fn test_server_config_new() {
@@ -12,6 +12,7 @@ fn test_server_config_new() {
         3000,
         None,
         AuthState::new(),
+        TailscaleAuthState::new(),
         300,
     );
     assert_eq!(config.host, "127.0.0.1");
