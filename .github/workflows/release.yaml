@@ -11,7 +11,7 @@ on:
 jobs:
   container:
     name: Build & Push Container Image
-    uses: docker/github-builder/.github/workflows/build.yml@v1.10.0
+    uses: docker/github-builder/.github/workflows/build.yml@v1.16.0
     permissions:
       contents: read
       packages: write
