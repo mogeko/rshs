@@ -304,9 +304,7 @@ pub fn active_slice(infos: &[LockInfo]) -> impl Iterator<Item = &LockInfo> + '_ 
 ///
 /// Re-exported from [`crate::webdav::ls`].
 pub fn walk_locked_ancestors<'a>(
-    locks: &'a LockStore,
-    target: &Path,
-    root_canonical: &Path,
+    locks: &'a LockStore, target: &Path, root_canonical: &Path,
     mut f: impl FnMut(&'a [LockInfo]) -> bool,
 ) -> bool {
     if locks.is_empty() {
@@ -373,9 +371,7 @@ fn is_ancestor_of(ancestor: &Path, target: &Path) -> bool {
 ///
 /// Re-exported from [`crate::webdav::ls`].
 pub fn find_ancestor_lock<'a>(
-    locks: &'a LockStore,
-    target: &Path,
-    root_canonical: &Path,
+    locks: &'a LockStore, target: &Path, root_canonical: &Path,
     predicate: impl Fn(&LockInfo) -> bool,
 ) -> Option<&'a LockInfo> {
     let mut result: Option<&'a LockInfo> = None;
@@ -405,9 +401,7 @@ pub fn find_ancestor_lock<'a>(
 /// refresh depth:infinity ancestor locks when a client submits a
 /// LOCK request with a matching `If` header token.
 pub fn find_and_refresh_ancestor_lock(
-    locks: &mut LockStore,
-    target: &Path,
-    predicate: impl Fn(&LockInfo) -> bool,
+    locks: &mut LockStore, target: &Path, predicate: impl Fn(&LockInfo) -> bool,
 ) -> Option<LockInfo> {
     // Two-pass approach to avoid borrow conflicts:
     // 1. Collect candidate paths (immutable iteration)
@@ -478,8 +472,7 @@ pub fn eval_if(lists: &[IfList], infos: &[LockInfo], request_path: &str) -> bool
 /// Returns `Err(StatusCode::LOCKED)` when an active exclusive lock exists
 /// and the request does not present a matching lock token.
 pub fn check_existing_exclusive(
-    entry: &[LockInfo],
-    if_tokens: &[String],
+    entry: &[LockInfo], if_tokens: &[String],
 ) -> Result<Option<String>, StatusCode> {
     let token_info = active_slice(entry).find(|l| l.is_exclusive());
     match token_info.map(|l| l.token.clone()) {

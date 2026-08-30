@@ -63,8 +63,7 @@ impl AppState {
     }
 
     pub(crate) async fn resolve_and_guard(
-        &self,
-        request_path: &str,
+        &self, request_path: &str,
     ) -> Result<PathBuf, ResolveTargetError> {
         path::resolve_and_guard(
             &self.root_dir,

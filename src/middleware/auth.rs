@@ -28,9 +28,7 @@ use crate::server::AppResult;
 /// This only occurs when the response builder is in an invalid state,
 /// which cannot happen with a fresh builder.
 pub async fn auth_middleware(
-    State(state): State<Arc<AuthState>>,
-    req: Request,
-    next: Next,
+    State(state): State<Arc<AuthState>>, req: Request, next: Next,
 ) -> AppResult<Response, Response> {
     if state.is_empty() {
         return Ok(next.run(req).await);

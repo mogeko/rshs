@@ -49,9 +49,7 @@ impl ResolveTargetError {
 /// Canonicalizes and verifies the target is within the root directory.
 /// Returns `None` if the path doesn't exist or is outside the root.
 pub async fn resolve_existing(
-    root_dir: &Path,
-    root_canonical: &Path,
-    request_path: &str,
+    root_dir: &Path, root_canonical: &Path, request_path: &str,
 ) -> Option<PathBuf> {
     let decoded = percent_decode_str(request_path).decode_utf8_lossy();
 
@@ -98,9 +96,7 @@ pub fn resolve_write_target(root_dir: &Path, request_path: &str) -> Option<PathB
 /// component. In practice this never occurs — `resolve_write_target`
 /// rejects empty paths and directory paths (trailing `/`).
 pub async fn resolve_and_guard(
-    root_dir: &Path,
-    root_canonical: &Path,
-    request_path: &str,
+    root_dir: &Path, root_canonical: &Path, request_path: &str,
     canonical_cache: &Mutex<HashMap<PathBuf, PathBuf>>,
 ) -> Result<PathBuf, ResolveTargetError> {
     let fs_path = match resolve_write_target(root_dir, request_path) {

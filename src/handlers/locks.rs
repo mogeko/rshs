@@ -245,8 +245,7 @@ async fn ensure_lock_null_resource(target: &std::path::Path) -> Result<bool, Sta
 /// Precondition: caller has already verified that no exclusive lock
 /// matched `if_tokens` (via [`check_existing_exclusive`](check_existing_exclusive)).
 fn try_new_exclusive(
-    entry: &mut Vec<webdav::LockInfo>,
-    if_tokens: &[String],
+    entry: &mut Vec<webdav::LockInfo>, if_tokens: &[String],
 ) -> AppResult<TryAcquire> {
     if entry.is_empty() {
         return Ok(TryAcquire::NeedsLockNull);
@@ -265,8 +264,7 @@ fn try_new_exclusive(
 /// Precondition: caller has already verified that no exclusive lock
 /// matched `if_tokens` (via [`check_existing_exclusive`](ls::check_existing_exclusive)).
 fn try_new_shared(
-    entry: &mut Vec<webdav::LockInfo>,
-    if_tokens: &[String],
+    entry: &mut Vec<webdav::LockInfo>, if_tokens: &[String],
 ) -> AppResult<TryAcquire> {
     // Refresh an existing shared lock with matching token
     if let Some(existing) = entry.iter().find(|l| if_tokens.contains(&l.token)) {

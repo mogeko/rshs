@@ -45,9 +45,7 @@ mod unix_tests {
     }
 
     fn assert_graceful_shutdown(
-        mut child: std::process::Child,
-        tmpdir: tempfile::TempDir,
-        signal_name: &str,
+        mut child: std::process::Child, tmpdir: tempfile::TempDir, signal_name: &str,
     ) {
         let status = child.wait().unwrap();
 

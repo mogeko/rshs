@@ -66,8 +66,7 @@ mod linux_impl {
     /// io_uring.  Returns results indexed identically to `names`.
     /// `None` means statx failed for that entry.
     pub(super) fn batch_statx(
-        dir_fd: std::os::fd::RawFd,
-        names: &[CString],
+        dir_fd: std::os::fd::RawFd, names: &[CString],
     ) -> io::Result<Vec<Option<StatxBuf>>> {
         if names.is_empty() {
             return Ok(Vec::new());
