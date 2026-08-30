@@ -182,7 +182,7 @@ fn parse_lock_body(xml: &[u8]) -> (Option<String>, webdav::LockScope) {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
                 let local = e.local_name();
-                let name = local.as_ref();
+                let name: &[u8] = local.as_ref();
                 match name {
                     b"owner" => in_owner = true,
                     b"lockscope" => in_lockscope = true,
@@ -193,7 +193,7 @@ fn parse_lock_body(xml: &[u8]) -> (Option<String>, webdav::LockScope) {
             }
             Ok(Event::End(e)) => {
                 let local = e.local_name();
-                let name = local.as_ref();
+                let name: &[u8] = local.as_ref();
                 match name {
                     b"owner" => in_owner = false,
                     b"lockscope" => in_lockscope = false,
