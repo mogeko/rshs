@@ -543,13 +543,10 @@ pub fn parse_destination(headers: &HeaderMap) -> Option<String> {
     let value = headers.get("destination")?.to_str().ok()?;
     let mut path = if let Some(pos) = value.find("://") {
         let after_scheme = &value[pos + 3..];
-        if let Some(slash_pos) = after_scheme.find('/') {
-            percent_decode_str(&after_scheme[slash_pos..])
-                .decode_utf8_lossy()
-                .to_string()
-        } else {
-            return None;
-        }
+        let slash_pos = after_scheme.find('/')?;
+        percent_decode_str(&after_scheme[slash_pos..])
+            .decode_utf8_lossy()
+            .to_string()
     } else if value.starts_with('/') {
         percent_decode_str(value).decode_utf8_lossy().to_string()
     } else {
