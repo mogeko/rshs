@@ -14,7 +14,6 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use axum::http::HeaderMap;
-use derive_new::new;
 use percent_encoding::percent_decode_str;
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
@@ -34,7 +33,7 @@ pub type DeadPropertyStore = HashMap<PathBuf, HashMap<String, String>>;
 pub struct PropPatchAction(pub String, pub Option<String>);
 
 /// A parsed PROPPATCH request body containing a sequence of set/remove actions.
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct PropPatchOp {
     pub actions: Vec<PropPatchAction>,
 }
@@ -108,20 +107,16 @@ pub enum PropRequest {
 /// assert!(!e.is_dir);
 /// assert_eq!(e.size, 1024);
 /// ```
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct PropEntry {
     pub href: String,
     pub modified: SystemTime,
     pub created: Option<SystemTime>,
     pub size: u64,
     pub is_dir: bool,
-    #[new(value = "None")]
     pub content_type: Option<String>,
-    #[new(value = "None")]
     pub dead_props: Option<HashMap<String, String>>,
-    #[new(value = "None")]
     pub active_locks: Option<Vec<LockInfo>>,
-    #[new(value = "None")]
     pub canonical_path: Option<PathBuf>,
 }
 
@@ -137,13 +132,17 @@ impl PropEntry {
     /// assert!(entry.size > 0);
     /// ```
     pub fn from_meta(meta: &Metadata, href: String, is_dir: bool) -> Self {
-        Self::new(
+        PropEntry {
             href,
-            meta.modified().unwrap_or(UNIX_EPOCH),
-            meta.created().ok(),
-            meta.len(),
+            modified: meta.modified().unwrap_or(UNIX_EPOCH),
+            created: meta.created().ok(),
+            size: meta.len(),
             is_dir,
-        )
+            content_type: None,
+            dead_props: None,
+            active_locks: None,
+            canonical_path: None,
+        }
     }
 
     /// Create a `PropEntry` from a [`scandir::DirEntryMeta`] and an href.
@@ -152,7 +151,17 @@ impl PropEntry {
     /// `active_locks`, `canonical_path`) are left at `None` — callers
     /// set them afterwards as needed.
     pub(crate) fn from_dirent(meta: &DirEntryMeta, href: String) -> Self {
-        Self::new(href, meta.modified, meta.created, meta.size, meta.is_dir)
+        PropEntry {
+            href,
+            modified: meta.modified,
+            created: meta.created,
+            size: meta.size,
+            is_dir: meta.is_dir,
+            content_type: None,
+            dead_props: None,
+            active_locks: None,
+            canonical_path: None,
+        }
     }
 }
 
@@ -176,7 +185,7 @@ pub type LockStore = HashMap<PathBuf, Vec<LockInfo>>;
 /// assert!(lock.is_exclusive());
 /// assert!(!lock.is_expired());
 /// ```
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct LockInfo {
     pub scope: LockScope,
     pub token: String,
@@ -694,7 +703,7 @@ pub fn parse_proppatch_request(xml: &[u8]) -> Result<PropPatchOp, ParseError> {
         return Err(ParseError::InvalidBody("invalid PROPPATCH body"));
     }
 
-    Ok(PropPatchOp::new(actions))
+    Ok(PropPatchOp { actions })
 }
 
 #[cfg(test)]

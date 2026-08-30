@@ -4,7 +4,6 @@ use std::path::Path;
 use std::time::SystemTime;
 
 use axum::http::{HeaderMap, StatusCode};
-use derive_new::new;
 
 use super::{Depth, LockInfo, LockStore};
 
@@ -77,13 +76,21 @@ impl IfCondition {
 /// assert!(list.has_lock_token());
 /// assert_eq!(list.positive_tokens(), vec!["opaquelocktoken:t1"]);
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, new)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IfList {
     pub resource_tag: Option<String>,
     pub conditions: Vec<IfCondition>,
 }
 
 impl IfList {
+    /// Create a new `IfList` with the given resource tag and conditions.
+    pub fn new(resource_tag: Option<String>, conditions: Vec<IfCondition>) -> Self {
+        Self {
+            resource_tag,
+            conditions,
+        }
+    }
+
     /// Collect all non-negated state tokens.
     ///
     /// ```
@@ -490,25 +497,25 @@ mod tests {
     use crate::webdav::LockScope;
 
     fn make_lock(scope: LockScope, token: &str) -> LockInfo {
-        LockInfo::new(
+        LockInfo {
             scope,
-            token.into(),
-            None,
-            SystemTime::now(),
-            None,
-            Depth::Zero,
-        )
+            token: token.into(),
+            owner: None,
+            created: SystemTime::now(),
+            timeout: None,
+            depth: Depth::Zero,
+        }
     }
 
     fn make_expired_lock(token: &str) -> LockInfo {
-        LockInfo::new(
-            LockScope::Exclusive,
-            token.into(),
-            None,
-            SystemTime::now() - Duration::from_secs(2),
-            Some(Duration::from_secs(1)),
-            Depth::Zero,
-        )
+        LockInfo {
+            scope: LockScope::Exclusive,
+            token: token.into(),
+            owner: None,
+            created: SystemTime::now() - Duration::from_secs(2),
+            timeout: Some(Duration::from_secs(1)),
+            depth: Depth::Zero,
+        }
     }
 
     #[test]
@@ -727,14 +734,14 @@ mod tests {
     }
 
     fn make_infinity_lock(scope: LockScope, token: &str) -> LockInfo {
-        LockInfo::new(
+        LockInfo {
             scope,
-            token.into(),
-            None,
-            SystemTime::now(),
-            None,
-            Depth::Infinity,
-        )
+            token: token.into(),
+            owner: None,
+            created: SystemTime::now(),
+            timeout: None,
+            depth: Depth::Infinity,
+        }
     }
 
     #[test]
@@ -837,14 +844,14 @@ mod tests {
     fn test_find_ancestor_lock_ignores_expired() {
         let store = lock_store(vec![(
             "/a",
-            LockInfo::new(
-                LockScope::Exclusive,
-                "expired-token".into(),
-                None,
-                SystemTime::now() - Duration::from_secs(10),
-                Some(Duration::from_secs(1)),
-                Depth::Infinity,
-            ),
+            LockInfo {
+                scope: LockScope::Exclusive,
+                token: "expired-token".into(),
+                owner: None,
+                created: SystemTime::now() - Duration::from_secs(10),
+                timeout: Some(Duration::from_secs(1)),
+                depth: Depth::Infinity,
+            },
         )]);
         let target = Path::new("/a/b/file.txt");
         let root = Path::new("/");
@@ -857,14 +864,14 @@ mod tests {
         let old_time = SystemTime::now() - Duration::from_secs(3600);
         let mut store = lock_store(vec![(
             "/a",
-            LockInfo::new(
-                LockScope::Exclusive,
-                "t1".into(),
-                None,
-                old_time,
-                Some(Duration::from_secs(7200)),
-                Depth::Infinity,
-            ),
+            LockInfo {
+                scope: LockScope::Exclusive,
+                token: "t1".into(),
+                owner: None,
+                created: old_time,
+                timeout: Some(Duration::from_secs(7200)),
+                depth: Depth::Infinity,
+            },
         )]);
         let target = Path::new("/a/b/file.txt");
 
@@ -880,14 +887,14 @@ mod tests {
     fn test_find_and_refresh_ancestor_lock_ignores_expired() {
         let mut store = lock_store(vec![(
             "/a",
-            LockInfo::new(
-                LockScope::Exclusive,
-                "expired".into(),
-                None,
-                SystemTime::now() - Duration::from_secs(10),
-                Some(Duration::from_secs(1)),
-                Depth::Infinity,
-            ),
+            LockInfo {
+                scope: LockScope::Exclusive,
+                token: "expired".into(),
+                owner: None,
+                created: SystemTime::now() - Duration::from_secs(10),
+                timeout: Some(Duration::from_secs(1)),
+                depth: Depth::Infinity,
+            },
         )]);
         let target = Path::new("/a/b/file.txt");
         let result = find_and_refresh_ancestor_lock(&mut store, target, |l| l.token == "expired");
@@ -898,14 +905,14 @@ mod tests {
     fn test_find_and_refresh_ancestor_lock_no_match() {
         let mut store = lock_store(vec![(
             "/a",
-            LockInfo::new(
-                LockScope::Exclusive,
-                "t1".into(),
-                None,
-                SystemTime::now(),
-                None,
-                Depth::Infinity,
-            ),
+            LockInfo {
+                scope: LockScope::Exclusive,
+                token: "t1".into(),
+                owner: None,
+                created: SystemTime::now(),
+                timeout: None,
+                depth: Depth::Infinity,
+            },
         )]);
         let target = Path::new("/a/b/file.txt");
         let result =

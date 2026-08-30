@@ -97,14 +97,14 @@ pub async fn handle_lock(State(state): State<Arc<AppState>>, req: Request) -> Ap
 
     match decision {
         TryAcquire::Acquired(token) => {
-            let lock = webdav::LockInfo::new(
-                lock_scope,
-                token.clone(),
+            let lock = webdav::LockInfo {
+                scope: lock_scope,
+                token: token.clone(),
                 owner,
-                std::time::SystemTime::now(),
+                created: std::time::SystemTime::now(),
                 timeout,
                 depth,
-            );
+            };
             let xml = build_lock_response(&lock);
 
             entry.push(lock);
@@ -129,14 +129,14 @@ pub async fn handle_lock(State(state): State<Arc<AppState>>, req: Request) -> Ap
             }
 
             let token = webdav::generate_lock_token();
-            let lock = webdav::LockInfo::new(
-                lock_scope,
-                token.clone(),
+            let lock = webdav::LockInfo {
+                scope: lock_scope,
+                token: token.clone(),
                 owner,
-                std::time::SystemTime::now(),
+                created: std::time::SystemTime::now(),
                 timeout,
                 depth,
-            );
+            };
             let xml = build_lock_response(&lock);
 
             entry.push(lock);

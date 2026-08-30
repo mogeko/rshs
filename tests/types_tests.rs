@@ -6,14 +6,14 @@ use rshs::{AuthState, ServerConfig, TlsConfig};
 
 #[test]
 fn test_server_config_new() {
-    let config = ServerConfig::new(
-        PathBuf::from("/tmp/test"),
-        "127.0.0.1".into(),
-        3000,
-        None,
-        AuthState::new(),
-        300,
-    );
+    let config = ServerConfig {
+        root_dir: PathBuf::from("/tmp/test"),
+        host: "127.0.0.1".into(),
+        port: 3000,
+        tls_config: None,
+        auth_state: AuthState::new(),
+        lock_timeout: 300,
+    };
     assert_eq!(config.host, "127.0.0.1");
     assert_eq!(config.port, 3000);
     assert_eq!(config.root_dir, PathBuf::from("/tmp/test"));
