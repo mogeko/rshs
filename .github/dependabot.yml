@@ -1,5 +1,5 @@
 # Basic dependabot.yml file with
-# minimum configuration for two package managers
+# configuration for two package managers
 
 version: 2
 updates:
@@ -13,3 +13,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      cargo-deps:
+        patterns:
+          - "*"
