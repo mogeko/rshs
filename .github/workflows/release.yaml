@@ -47,7 +47,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - name: Authenticate to crates.io
         id: auth
         uses: rust-lang/crates-io-auth-action@v1.0.5
