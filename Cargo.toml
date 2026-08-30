@@ -1,6 +1,6 @@
 [package]
 name = "rshs"
-version = "0.9.2"
+version = "0.9.3"
 description = "A lightweight HTTP + WebDAV file server"
 edition = "2024"
 rust-version = "1.88"
