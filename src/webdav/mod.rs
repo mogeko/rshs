@@ -417,12 +417,9 @@ pub fn parse_clark(key: &str) -> Option<(&str, &str)> {
 fn extract_element_ns(e: &BytesStart) -> Result<(String, String), ParseError> {
     let qname = e.name();
     let name = qname.as_ref();
-    let (prefix, local) = match name.iter().position(|&b| b == b':') {
-        Some(pos) => (
-            Some(String::from_utf8_lossy(&name[..pos]).to_string()),
-            String::from_utf8_lossy(&name[pos + 1..]).to_string(),
-        ),
-        None => (None, String::from_utf8_lossy(name).to_string()),
+    let (prefix, local) = match name.find(':') {
+        Some(pos) => (Some(name[..pos].to_string()), name[pos + 1..].to_string()),
+        None => (None, name.to_string()),
     };
     let ns = match prefix {
         Some(ref p) => {
@@ -430,10 +427,10 @@ fn extract_element_ns(e: &BytesStart) -> Result<(String, String), ParseError> {
             let attr = e
                 .attributes()
                 .flatten()
-                .find(|a| String::from_utf8_lossy(a.key.as_ref()) == key);
+                .find(|a| a.key.as_ref() == key.as_str());
             match attr {
                 Some(a) => {
-                    let value = String::from_utf8_lossy(&a.value);
+                    let value = a.value.as_ref();
                     if value.is_empty() {
                         return Err(ParseError::InvalidBody(
                             "invalid namespace declaration: empty URI",
@@ -447,8 +444,8 @@ fn extract_element_ns(e: &BytesStart) -> Result<(String, String), ParseError> {
         None => e
             .attributes()
             .flatten()
-            .find(|a| a.key.as_ref() == b"xmlns")
-            .map(|a| String::from_utf8_lossy(&a.value).to_string())
+            .find(|a| a.key.as_ref() == "xmlns")
+            .map(|a| a.value.to_string())
             .unwrap_or_default(),
     };
     Ok((ns, local))
@@ -505,7 +502,7 @@ pub fn parse_propfind_request(xml: &[u8]) -> Result<PropRequest, ParseError> {
             }
             Event::End(e) => {
                 let local_name = e.local_name();
-                let local = String::from_utf8_lossy(local_name.as_ref());
+                let local = local_name.as_ref();
                 if local == "prop" {
                     in_prop = false;
                 }
@@ -675,14 +672,14 @@ pub fn parse_proppatch_request(xml: &[u8]) -> Result<PropPatchOp, ParseError> {
                 }
             }
             Event::Text(t) if in_set && current_name.is_some() => {
-                let raw = String::from_utf8_lossy(t.as_ref());
-                let val = decode_xml_char_refs(&raw);
+                let raw = t.as_ref();
+                let val = decode_xml_char_refs(raw);
                 actions.push(PropPatchAction(current_name.take().unwrap(), Some(val)));
             }
             Event::End(e) => {
                 let local_name = e.local_name();
-                let local = String::from_utf8_lossy(local_name.as_ref());
-                match &*local {
+                let local = local_name.as_ref();
+                match local {
                     "set" => in_set = false,
                     "remove" => in_remove = false,
                     _ if in_set && current_name.is_some() => {

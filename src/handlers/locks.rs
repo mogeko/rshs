@@ -182,26 +182,26 @@ fn parse_lock_body(xml: &[u8]) -> (Option<String>, webdav::LockScope) {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
                 let local = e.local_name();
-                let name: &[u8] = local.as_ref();
+                let name = local.as_ref();
                 match name {
-                    b"owner" => in_owner = true,
-                    b"lockscope" => in_lockscope = true,
-                    b"shared" if in_lockscope => scope = webdav::LockScope::Shared,
-                    b"exclusive" if in_lockscope => {}
+                    "owner" => in_owner = true,
+                    "lockscope" => in_lockscope = true,
+                    "shared" if in_lockscope => scope = webdav::LockScope::Shared,
+                    "exclusive" if in_lockscope => {}
                     _ => {}
                 }
             }
             Ok(Event::End(e)) => {
                 let local = e.local_name();
-                let name: &[u8] = local.as_ref();
+                let name = local.as_ref();
                 match name {
-                    b"owner" => in_owner = false,
-                    b"lockscope" => in_lockscope = false,
+                    "owner" => in_owner = false,
+                    "lockscope" => in_lockscope = false,
                     _ => {}
                 }
             }
             Ok(Event::Text(t)) if in_owner => {
-                owner = Some(String::from_utf8_lossy(t.as_ref()).to_string());
+                owner = Some(t.as_ref().to_string());
             }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
