@@ -21,6 +21,8 @@ jobs:
       output: image
       push: ${{ github.event_name != 'pull_request' }}
       platforms: linux/amd64,linux/arm64
+      set-meta-labels: true
+      set-meta-annotations: true
       meta-images: |
         docker.io/mogeko/rshs
         ghcr.io/mogeko/rshs
@@ -30,6 +32,8 @@ jobs:
         type=semver,pattern={{major}}
         type=edge
         type=sha,format=short
+      cache: true
+      cache-mode: max
     secrets:
       registry-auths: |
         - registry: docker.io
