@@ -98,7 +98,6 @@ src/
 | `axum` 0.8               | `http2`                                | HTTP server framework               |
 | `base64` 0.22            | —                                      | Basic Auth header decoding          |
 | `clap` 4.6               | `derive`, `env`                        | CLI args + env var support          |
-| `derive-new` 0.7         | —                                      | `#[derive(new)]` constructor macro  |
 | `futures-util` 0.3       | —                                      | Stream combinators (TryStreamExt)   |
 | `mime_guess` 2           | —                                      | MIME type detection                 |
 | `percent-encoding` 2     | —                                      | URI percent-encode/decode           |

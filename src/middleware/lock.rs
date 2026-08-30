@@ -26,9 +26,7 @@ use crate::webdav::{self, Method};
 /// or `412 Precondition Failed` when an `If` header is present without a
 /// `Lock-Token` and without lock-token conditions.
 pub async fn lock_enforce(
-    State(state): State<Arc<AppState>>,
-    req: Request,
-    next: Next,
+    State(state): State<Arc<AppState>>, req: Request, next: Next,
 ) -> AppResult {
     let Ok(method) = Method::try_from(req.method()) else {
         return Ok(next.run(req).await);
@@ -83,10 +81,7 @@ pub async fn lock_enforce(
 }
 
 fn is_path_locked(
-    locks: &webdav::LockStore,
-    path: &Path,
-    lists: &[webdav::IfList],
-    root_canonical: &Path,
+    locks: &webdav::LockStore, path: &Path, lists: &[webdav::IfList], root_canonical: &Path,
     request_path: &str,
 ) -> bool {
     let infos = match locks.get(path) {

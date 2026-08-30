@@ -17,7 +17,6 @@ use axum::extract::{Request, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::any;
-use derive_new::new;
 use tokio::sync::RwLock;
 
 use crate::auth::AuthState;
@@ -63,8 +62,7 @@ impl AppState {
     }
 
     pub(crate) async fn resolve_and_guard(
-        &self,
-        request_path: &str,
+        &self, request_path: &str,
     ) -> Result<PathBuf, ResolveTargetError> {
         path::resolve_and_guard(
             &self.root_dir,
@@ -81,7 +79,7 @@ pub type AppResult<T = Response, E = StatusCode> = Result<T, E>;
 
 /// Configuration for starting the server — root directory, bind address,
 /// optional TLS, authentication, and default lock timeout.
-#[derive(Clone, new)]
+#[derive(Clone)]
 pub struct ServerConfig {
     pub root_dir: PathBuf,
     pub host: String,

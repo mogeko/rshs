@@ -7,12 +7,11 @@ use axum::body::Body;
 use axum::extract::{Request, State};
 use axum::http::StatusCode;
 use axum::middleware::Next;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use base64::engine::general_purpose;
 
 use crate::auth::{AuthState, hash_auth_header};
-use crate::server::AppResult;
 
 /// Validates HTTP Basic Authentication credentials against the configured `AuthState`.
 /// Skips authentication entirely when no users are configured (backward compatible).
@@ -28,16 +27,14 @@ use crate::server::AppResult;
 /// This only occurs when the response builder is in an invalid state,
 /// which cannot happen with a fresh builder.
 pub async fn auth_middleware(
-    State(state): State<Arc<AuthState>>,
-    req: Request,
-    next: Next,
-) -> AppResult<Response, Response> {
+    State(state): State<Arc<AuthState>>, req: Request, next: Next,
+) -> Result<Response, Unauthorized> {
     if state.is_empty() {
         return Ok(next.run(req).await);
     }
 
     let Some((username, passwd, hash)) = parse_basic_auth(req.headers()) else {
-        return Err(unauthorized());
+        return Err(Unauthorized);
     };
 
     if state.validate_cached(&username, &passwd, hash).await {
@@ -45,7 +42,7 @@ pub async fn auth_middleware(
         Ok(next.run(req).await)
     } else {
         tracing::warn!(user = %username, "authentication failed");
-        Err(unauthorized())
+        Err(Unauthorized)
     }
 }
 
@@ -62,10 +59,16 @@ fn parse_basic_auth(headers: &axum::http::HeaderMap) -> Option<(String, String, 
     Some((user.to_string(), pass.to_string(), header_hash))
 }
 
-fn unauthorized() -> Response {
-    Response::builder()
-        .status(StatusCode::UNAUTHORIZED)
-        .header("www-authenticate", r#"Basic realm="rshs""#)
-        .body(Body::empty())
-        .unwrap()
+/// Error returned when authentication fails. Always renders a `401 Unauthorized`
+/// response with a `WWW-Authenticate: Basic realm="rshs"` header.
+pub struct Unauthorized;
+
+impl IntoResponse for Unauthorized {
+    fn into_response(self) -> Response {
+        Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .header("www-authenticate", r#"Basic realm="rshs""#)
+            .body(Body::empty())
+            .expect("a fresh response builder cannot fail")
+    }
 }

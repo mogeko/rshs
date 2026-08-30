@@ -1,6 +1,6 @@
 [package]
 name = "rshs"
-version = "0.9.2"
+version = "0.9.3"
 description = "A lightweight HTTP + WebDAV file server"
 edition = "2024"
 rust-version = "1.88"
@@ -17,13 +17,12 @@ default = []
 
 [dependencies]
 axum = { version = "0.8", features = ["http2"] }
-base64 = "0.22"
+base64 = "0.23"
 clap = { version = "4.6", features = ["derive", "env"] }
-derive-new = "0.7"
 futures-util = "0.3"
 mime_guess = "2.0"
 percent-encoding = "2.3"
-quick-xml = "0.40"
+quick-xml = "0.42"
 rustls = "0.23"
 rustls-pemfile = "2.2"
 sha-crypt = { version = "0.6", features = ["getrandom"] }
@@ -38,7 +37,7 @@ tokio = { version = "1.52", features = [
 tokio-rustls = "0.26"
 tokio-util = { version = "0.7", features = ["io"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["trace"] }
+tower-http = { version = "0.7", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 

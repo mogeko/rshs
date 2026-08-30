@@ -14,7 +14,6 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use axum::http::HeaderMap;
-use derive_new::new;
 use percent_encoding::percent_decode_str;
 use quick_xml::Reader;
 use quick_xml::events::{BytesStart, Event};
@@ -34,7 +33,7 @@ pub type DeadPropertyStore = HashMap<PathBuf, HashMap<String, String>>;
 pub struct PropPatchAction(pub String, pub Option<String>);
 
 /// A parsed PROPPATCH request body containing a sequence of set/remove actions.
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct PropPatchOp {
     pub actions: Vec<PropPatchAction>,
 }
@@ -108,20 +107,16 @@ pub enum PropRequest {
 /// assert!(!e.is_dir);
 /// assert_eq!(e.size, 1024);
 /// ```
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct PropEntry {
     pub href: String,
     pub modified: SystemTime,
     pub created: Option<SystemTime>,
     pub size: u64,
     pub is_dir: bool,
-    #[new(value = "None")]
     pub content_type: Option<String>,
-    #[new(value = "None")]
     pub dead_props: Option<HashMap<String, String>>,
-    #[new(value = "None")]
     pub active_locks: Option<Vec<LockInfo>>,
-    #[new(value = "None")]
     pub canonical_path: Option<PathBuf>,
 }
 
@@ -137,13 +132,17 @@ impl PropEntry {
     /// assert!(entry.size > 0);
     /// ```
     pub fn from_meta(meta: &Metadata, href: String, is_dir: bool) -> Self {
-        Self::new(
+        PropEntry {
             href,
-            meta.modified().unwrap_or(UNIX_EPOCH),
-            meta.created().ok(),
-            meta.len(),
+            modified: meta.modified().unwrap_or(UNIX_EPOCH),
+            created: meta.created().ok(),
+            size: meta.len(),
             is_dir,
-        )
+            content_type: None,
+            dead_props: None,
+            active_locks: None,
+            canonical_path: None,
+        }
     }
 
     /// Create a `PropEntry` from a [`scandir::DirEntryMeta`] and an href.
@@ -152,7 +151,17 @@ impl PropEntry {
     /// `active_locks`, `canonical_path`) are left at `None` — callers
     /// set them afterwards as needed.
     pub(crate) fn from_dirent(meta: &DirEntryMeta, href: String) -> Self {
-        Self::new(href, meta.modified, meta.created, meta.size, meta.is_dir)
+        PropEntry {
+            href,
+            modified: meta.modified,
+            created: meta.created,
+            size: meta.size,
+            is_dir: meta.is_dir,
+            content_type: None,
+            dead_props: None,
+            active_locks: None,
+            canonical_path: None,
+        }
     }
 }
 
@@ -176,7 +185,7 @@ pub type LockStore = HashMap<PathBuf, Vec<LockInfo>>;
 /// assert!(lock.is_exclusive());
 /// assert!(!lock.is_expired());
 /// ```
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct LockInfo {
     pub scope: LockScope,
     pub token: String,
@@ -408,12 +417,9 @@ pub fn parse_clark(key: &str) -> Option<(&str, &str)> {
 fn extract_element_ns(e: &BytesStart) -> Result<(String, String), ParseError> {
     let qname = e.name();
     let name = qname.as_ref();
-    let (prefix, local) = match name.iter().position(|&b| b == b':') {
-        Some(pos) => (
-            Some(String::from_utf8_lossy(&name[..pos]).to_string()),
-            String::from_utf8_lossy(&name[pos + 1..]).to_string(),
-        ),
-        None => (None, String::from_utf8_lossy(name).to_string()),
+    let (prefix, local) = match name.find(':') {
+        Some(pos) => (Some(name[..pos].to_string()), name[pos + 1..].to_string()),
+        None => (None, name.to_string()),
     };
     let ns = match prefix {
         Some(ref p) => {
@@ -421,10 +427,10 @@ fn extract_element_ns(e: &BytesStart) -> Result<(String, String), ParseError> {
             let attr = e
                 .attributes()
                 .flatten()
-                .find(|a| String::from_utf8_lossy(a.key.as_ref()) == key);
+                .find(|a| a.key.as_ref() == key.as_str());
             match attr {
                 Some(a) => {
-                    let value = String::from_utf8_lossy(&a.value);
+                    let value = a.value.as_ref();
                     if value.is_empty() {
                         return Err(ParseError::InvalidBody(
                             "invalid namespace declaration: empty URI",
@@ -438,8 +444,8 @@ fn extract_element_ns(e: &BytesStart) -> Result<(String, String), ParseError> {
         None => e
             .attributes()
             .flatten()
-            .find(|a| a.key.as_ref() == b"xmlns")
-            .map(|a| String::from_utf8_lossy(&a.value).to_string())
+            .find(|a| a.key.as_ref() == "xmlns")
+            .map(|a| a.value.to_string())
             .unwrap_or_default(),
     };
     Ok((ns, local))
@@ -496,7 +502,7 @@ pub fn parse_propfind_request(xml: &[u8]) -> Result<PropRequest, ParseError> {
             }
             Event::End(e) => {
                 let local_name = e.local_name();
-                let local = String::from_utf8_lossy(local_name.as_ref());
+                let local = local_name.as_ref();
                 if local == "prop" {
                     in_prop = false;
                 }
@@ -537,13 +543,10 @@ pub fn parse_destination(headers: &HeaderMap) -> Option<String> {
     let value = headers.get("destination")?.to_str().ok()?;
     let mut path = if let Some(pos) = value.find("://") {
         let after_scheme = &value[pos + 3..];
-        if let Some(slash_pos) = after_scheme.find('/') {
-            percent_decode_str(&after_scheme[slash_pos..])
-                .decode_utf8_lossy()
-                .to_string()
-        } else {
-            return None;
-        }
+        let slash_pos = after_scheme.find('/')?;
+        percent_decode_str(&after_scheme[slash_pos..])
+            .decode_utf8_lossy()
+            .to_string()
     } else if value.starts_with('/') {
         percent_decode_str(value).decode_utf8_lossy().to_string()
     } else {
@@ -666,14 +669,14 @@ pub fn parse_proppatch_request(xml: &[u8]) -> Result<PropPatchOp, ParseError> {
                 }
             }
             Event::Text(t) if in_set && current_name.is_some() => {
-                let raw = String::from_utf8_lossy(t.as_ref());
-                let val = decode_xml_char_refs(&raw);
+                let raw = t.as_ref();
+                let val = decode_xml_char_refs(raw);
                 actions.push(PropPatchAction(current_name.take().unwrap(), Some(val)));
             }
             Event::End(e) => {
                 let local_name = e.local_name();
-                let local = String::from_utf8_lossy(local_name.as_ref());
-                match &*local {
+                let local = local_name.as_ref();
+                match local {
                     "set" => in_set = false,
                     "remove" => in_remove = false,
                     _ if in_set && current_name.is_some() => {
@@ -694,7 +697,7 @@ pub fn parse_proppatch_request(xml: &[u8]) -> Result<PropPatchOp, ParseError> {
         return Err(ParseError::InvalidBody("invalid PROPPATCH body"));
     }
 
-    Ok(PropPatchOp::new(actions))
+    Ok(PropPatchOp { actions })
 }
 
 #[cfg(test)]

@@ -9,7 +9,6 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use derive_new::new;
 use sha_crypt::{PasswordHasher, PasswordVerifier, ShaCrypt};
 
 use crate::cli::Cli;
@@ -50,21 +49,26 @@ pub enum Credential {
 /// let a = ShadowFileArg::from_arg("/etc/rshs/shadow");
 /// assert!(a.writable); // default
 /// ```
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct ShadowFileArg {
     pub path: String,
     pub writable: bool,
 }
 
 impl ShadowFileArg {
+    /// Create a new shadow file argument with the given path and writability.
+    pub fn new(path: String, writable: bool) -> Self {
+        Self { path, writable }
+    }
+
     /// Parse a shadow file spec string: `PATH[:rw|:ro]`. Defaults to `:rw`.
     pub fn from_arg(s: &str) -> Self {
         if let Some(path) = s.strip_suffix(":rw") {
-            Self::new(path.to_string(), true)
+            ShadowFileArg::new(path.to_string(), true)
         } else if let Some(path) = s.strip_suffix(":ro") {
-            Self::new(path.to_string(), false)
+            ShadowFileArg::new(path.to_string(), false)
         } else {
-            Self::new(s.to_string(), true)
+            ShadowFileArg::new(s.to_string(), true)
         }
     }
 }

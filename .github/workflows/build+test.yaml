@@ -10,7 +10,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
-  RUSTFLAGS: -D warnings
 
 jobs:
   ci:
@@ -27,6 +26,6 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo fmt --check
-      - run: cargo clippy
-      - run: cargo build --release --locked
-      - run: cargo test --release --locked
+      - run: cargo clippy -- -D warnings
+      - run: cargo build --locked
+      - run: cargo test --locked

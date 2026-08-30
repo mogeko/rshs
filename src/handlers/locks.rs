@@ -97,14 +97,14 @@ pub async fn handle_lock(State(state): State<Arc<AppState>>, req: Request) -> Ap
 
     match decision {
         TryAcquire::Acquired(token) => {
-            let lock = webdav::LockInfo::new(
-                lock_scope,
-                token.clone(),
+            let lock = webdav::LockInfo {
+                scope: lock_scope,
+                token: token.clone(),
                 owner,
-                std::time::SystemTime::now(),
+                created: std::time::SystemTime::now(),
                 timeout,
                 depth,
-            );
+            };
             let xml = build_lock_response(&lock);
 
             entry.push(lock);
@@ -129,14 +129,14 @@ pub async fn handle_lock(State(state): State<Arc<AppState>>, req: Request) -> Ap
             }
 
             let token = webdav::generate_lock_token();
-            let lock = webdav::LockInfo::new(
-                lock_scope,
-                token.clone(),
+            let lock = webdav::LockInfo {
+                scope: lock_scope,
+                token: token.clone(),
                 owner,
-                std::time::SystemTime::now(),
+                created: std::time::SystemTime::now(),
                 timeout,
                 depth,
-            );
+            };
             let xml = build_lock_response(&lock);
 
             entry.push(lock);
@@ -184,10 +184,10 @@ fn parse_lock_body(xml: &[u8]) -> (Option<String>, webdav::LockScope) {
                 let local = e.local_name();
                 let name = local.as_ref();
                 match name {
-                    b"owner" => in_owner = true,
-                    b"lockscope" => in_lockscope = true,
-                    b"shared" if in_lockscope => scope = webdav::LockScope::Shared,
-                    b"exclusive" if in_lockscope => {}
+                    "owner" => in_owner = true,
+                    "lockscope" => in_lockscope = true,
+                    "shared" if in_lockscope => scope = webdav::LockScope::Shared,
+                    "exclusive" if in_lockscope => {}
                     _ => {}
                 }
             }
@@ -195,13 +195,13 @@ fn parse_lock_body(xml: &[u8]) -> (Option<String>, webdav::LockScope) {
                 let local = e.local_name();
                 let name = local.as_ref();
                 match name {
-                    b"owner" => in_owner = false,
-                    b"lockscope" => in_lockscope = false,
+                    "owner" => in_owner = false,
+                    "lockscope" => in_lockscope = false,
                     _ => {}
                 }
             }
             Ok(Event::Text(t)) if in_owner => {
-                owner = Some(String::from_utf8_lossy(t.as_ref()).to_string());
+                owner = Some(t.as_ref().to_string());
             }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
@@ -245,8 +245,7 @@ async fn ensure_lock_null_resource(target: &std::path::Path) -> Result<bool, Sta
 /// Precondition: caller has already verified that no exclusive lock
 /// matched `if_tokens` (via [`check_existing_exclusive`](check_existing_exclusive)).
 fn try_new_exclusive(
-    entry: &mut Vec<webdav::LockInfo>,
-    if_tokens: &[String],
+    entry: &mut Vec<webdav::LockInfo>, if_tokens: &[String],
 ) -> AppResult<TryAcquire> {
     if entry.is_empty() {
         return Ok(TryAcquire::NeedsLockNull);
@@ -265,8 +264,7 @@ fn try_new_exclusive(
 /// Precondition: caller has already verified that no exclusive lock
 /// matched `if_tokens` (via [`check_existing_exclusive`](ls::check_existing_exclusive)).
 fn try_new_shared(
-    entry: &mut Vec<webdav::LockInfo>,
-    if_tokens: &[String],
+    entry: &mut Vec<webdav::LockInfo>, if_tokens: &[String],
 ) -> AppResult<TryAcquire> {
     // Refresh an existing shared lock with matching token
     if let Some(existing) = entry.iter().find(|l| if_tokens.contains(&l.token)) {

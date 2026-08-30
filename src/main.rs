@@ -28,14 +28,15 @@ async fn main() -> std::io::Result<()> {
     let tls_config = cli.to_tls_config();
     let host = cli.host;
     let root_dir = PathBuf::from(cli.root_dir);
+    let lock_timeout = cli.lock_timeout;
 
-    rshs::start_server(rshs::ServerConfig::new(
+    rshs::start_server(rshs::ServerConfig {
         root_dir,
         host,
         port,
         tls_config,
         auth_state,
-        cli.lock_timeout,
-    ))
+        lock_timeout,
+    })
     .await
 }
